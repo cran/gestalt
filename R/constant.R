@@ -8,10 +8,10 @@
 #' call (i.e., `constant()`
 #' [memoizes](https://en.wikipedia.org/wiki/Memoization) void functions).
 #'
-#' Combine ``\link[=compose]{`%>>>%`}`` with `constant()` for a _lazy_,
-#' _structured_ alternative to the
+#' Combine [`%>>>%`][compose] with `constant()` for a _lazy_, _structured_
+#' alternative to the
 #' [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``
-#' (see ‘Examples’).
+#' operator (see ‘Examples’).
 #'
 #' @param f Function, or symbol or name (string) thereof, that can be called
 #'   without arguments. (NB: `constant()` itself does not check whether `f()` is
@@ -20,7 +20,7 @@
 #' @return `constant()` yields a function without formal arguments that returns
 #'   the (cached, visibility-preserving) value of the void call `f()`.
 #'
-#' @seealso ``\link[=compose]{`%>>>%`}``
+#' @seealso [`%>>>%`][compose]
 #'
 #' @examples
 #' # Function with a constant return value
@@ -54,7 +54,7 @@
 #'
 #' \dontrun{
 #' # Think of `%>>>%` combined with `constant()` as a lazy, structured
-#' # alternative to the magrittr `%>%`.
+#' # alternative to the magrittr `%>%` operator.
 #' library(magrittr)
 #'
 #' val2 <- mtcars %>%

@@ -1,11 +1,15 @@
 #' Compose Functions
 #'
 #' @description
-#' Compose functions in two ways:
+#' To compose functions,
 #'
-#' - Use `compose(f, g, ...)` to make the function that applies `f`, then `g`,
-#'   etc. It has the [formals][base::formals()] of the first function applied,
-#'   namely `f`. Thus
+#' * Use `compose()`:
+#'   ```
+#'     compose(f, g, h, ...)
+#'   ```
+#'   This makes the function that applies `f`, _first_, then `g`, then `h`, etc.
+#'   It has the [formals][base::formals()] of the first function applied (namely
+#'   `f`). Thus
 #'   ```
 #'     compose(paste, toupper)
 #'   ```
@@ -16,13 +20,17 @@
 #'     }
 #'   ```
 #'
-#' - Alternatively, use the infix notation `f %>>>% g %>>>% ...`, which
-#'   comprehends the semantics of the
+#' * Use `` `%>>>%` ``:
+#'   ```
+#'     f %>>>% g %>>>% h %>>>% ...
+#'   ```
+#'   It comprehends both the semantics of the
 #'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``
-#'   operator and, additionally, [quasiquotation][rlang::quasiquotation].
-#'   Thus, assuming `sep` has the value `""`,
-#'   \preformatted{%
-#'   sample \%>>>\% paste(collapse = !!sep)}
+#'   operator and [quasiquotation][rlang::quasiquotation]. Thus, assuming `sep`
+#'   has the value `""`,
+#'   ```
+#'     sample %>>>% paste(collapse = !!sep)
+#'   ```
 #'   is equivalent to the function
 #'   ```
 #'     function(x, size, replace = FALSE, prob = NULL) {
@@ -30,7 +38,13 @@
 #'     }
 #'   ```
 #'
-#' Use [as.list()] to recover the list of composite functions.
+#' Use [as.list()] to recover the list of composite functions. For example, both
+#' ```
+#'   as.list(compose(paste, capitalize = toupper))
+#'
+#'   as.list(paste %>>>% capitalize: toupper)
+#' ```
+#' return the (named) list of functions `list(paste, capitalize = toupper)`.
 #'
 #' @param ... Functions or lists thereof to compose, in order of application.
 #'   Lists of functions are automatically spliced in.
@@ -38,92 +52,143 @@
 #'   of `:=`, and [splicing][rlang::quasiquotation], via `!!!`, are supported.
 #'
 #' @return Function of class `CompositeFunction`, whose
-#'   [formals][base::formals()] match those of the first function applied (as a
+#'   [formals][base::formals()] are those of the first function applied (as a
 #'   closure).
 #'
-#' @section Semantics of `` `%>>>%` ``:
-#'   `` `%>>>%` `` adopts the semantics of the
-#'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``:
-#'   \enumerate{
-#'     \item Names are matched to functions.
-#'     \item Function calls are implicitly “partialized” as a unary function of
-#'       `.` (a point). The rule is that when the point matches an argument
-#'       value, such as in
-#'       \preformatted{%
-#'   ... \%>>>\% f(x, .) \%>>>\% ...
-#'   ... \%>>>\% f(x, y = .) \%>>>\% ...}
-#'       the ‘`f(x, .)`’, resp. ‘`f(x, y = .)`’, is interpreted as the function
-#'       `function(.) f(x, .)`, resp. `function(.) f(x, y = .)`. Otherwise, the
-#'       call is implicitly “partialized,” e.g., in sequences such as
-#'       \preformatted{%
-#'   ... \%>>>\% f(x, y) \%>>>\% ...
-#'   ... \%>>>\% f(x, y(.)) \%>>>\% ...}
-#'       the ‘`f(x, y)`’, resp. ‘`f(x, y(.))`’, is interpreted as the function
-#'       `function(.) f(., x, y)`, resp. `function(.) f(., x, y(.))`.
-#'     \item Expressions in curly braces are interpreted as unary-function
-#'       bodies (i.e., curly braces represent “lambda functions”). For example,
-#'       in
-#'       \preformatted{%
-#'   ... \%>>>\% {f(.); g(.)} \%>>>\% ...}
-#'       the ‘`{f(.); g(.)}`’ is interpreted as the function
-#'       `function(.) {f(.); g(.)}`. Curly braces are useful when you want to
-#'       circumvent the implicit-partialization rule for function calls.
-#'   }
-#'   \subsection{Exceptional Function Calls}{
-#'     Exceptions to the rule of implicit partialization of function calls are
-#'     made in a few cases of convenience:
-#'     \itemize{
-#'       \item Parenthesis ([`(`][base::Paren]) applies grouping. In particular,
-#'         expressions within parentheses are literally interpreted.
-#'       \item Colon ([`:`][base::Colon]) applies naming, according to the
-#'         syntax ‘`<name>: <function>`’, where ‘`<function>`’ is interpreted
-#'         according to the semantics of `` `%>>>%` ``. For example, in
-#'       \preformatted{%
-#'   ... \%>>>\% a_name: f \%>>>\% ...}
-#'       the function `f` is named `"a_name"`.
-#'       \item [fn()], [namespace operators][base::ns-dblcolon] (`` `::`  ``,
-#'         `` `:::` ``) and [extractors][base::Extract] (`` `$` ``, `` `[[` ``,
-#'         `` `[` ``) are literally interpreted. This allows for list extractors
-#'         to be applied to composite functions appearing in a `` `%>>>%` ``
-#'         call (see ‘Operate on a Composite Function’).
-#'     }
-#'   }
-#'   \subsection{Quasiquotation}{
-#'     Tidyverse [unquoting][rlang::quasiquotation] via `!!` is supported. Use
-#'     it to:
-#'     \itemize{
-#'       \item Enforce immutability. For example, by unquoting `res` in
-#'         \preformatted{%
-#'   res <- "result"
-#'   get_result <- identity \%>>>\% lapply(`[[`, !!res)}
-#'         you ensure that the function `get_result()` always extracts the
-#'         component named `"result"`, even if the binding `res` mutates or
-#'         is removed.
-#'       \item Interpret ‘`.`’ in the lexical scope. For example,
-#'         \preformatted{%
-#'   . <- "point"
-#'   is_point <- {.[!is.na(.)]} \%>>>\% {. == !!.}}
-#'         determines those non-`NA` components of a (character) vector that
-#'         equal the string `"point"`.
-#'       \item Programmatically assign names. For example, unquoting `nm` in
-#'         \preformatted{%
-#'   nm <- "a_name"
-#'   ... \%>>>\% !!nm: f \%>>>\% ...}
-#'         names the `f`-component of the resulting composite function
-#'         `"a_name"`.
-#'       \item Expend a computation upfront to spare a runtime expense. For
-#'         example, presuming the value of the call `f()` is immutable and that
-#'         `g` is a pure function, both
-#'         \preformatted{%
-#'   ... \%>>>\% g(f()) \%>>>\% ...
-#'   ... \%>>>\% g(!!f()) \%>>>\% ...}
-#'         would be functions yielding the same values. But the first would
-#'         compute `f()` anew with each call, whereas the second would simply
-#'         depend on a pre-computed value of `f()`.
-#'     }
+#' @section Semantics of the Composition Operator:
+#'   The `` `%>>>%` `` operator adopts the semantics of the
+#'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``
+#'   operator:
+#'
+#'   1. **Bare names are matched to functions** — For example, in a composition
+#'      like
+#'      ```
+#'        ... %>>>% foo %>>>% ...
+#'      ```
+#'      the ‘`foo`’ is matched to the function of that name.
+#'
+#'   2. **Function calls are interpreted as a unary function of a point (`.`)**
+#'      — A _call_ is interpreted as a _function_ (of a point) in one of two
+#'      ways:
+#'
+#'      * If the point matches an argument value, the call is literally
+#'        interpreted as the body of the function. For example, in the
+#'        compositions
+#'        ```
+#'          ... %>>>% foo(x, .) %>>>% ...
+#'
+#'          ... %>>>% foo(x, y = .) %>>>% ...
+#'        ```
+#'        the ‘`foo(x, .)`’, resp. ‘`foo(x, y = .)`’, is interpreted as the
+#'        function `function(.) foo(x, .)`, resp. `function(.) foo(x, y = .)`.
+#'
+#'      * Otherwise, the call is regarded as implicitly having the point as its
+#'        first argument before being interpreted as the body of the function.
+#'        For example, in the compositions
+#'        ```
+#'          ... %>>>% foo(x) %>>>% ...
+#'
+#'          ... %>>>% foo(x, y(.)) %>>>% ...
+#'        ```
+#'        the ‘`foo(x)`’, resp. ‘`foo(x, y(.))`’, is interpreted as the function
+#'        `function(.) foo(., x)`, resp. `function(.) foo(., x, y(.))`.
+#'
+#'   3. **Expressions `{...}` are interpreted as a function of a point (`.`)** —
+#'      For example, in a composition
+#'      ```
+#'        ... %>>>% {
+#'          foo(.)
+#'          bar(.)
+#'        } %>>>% ...
+#'      ```
+#'      the ‘`{foo(.); bar(.)}`’ is interpreted as the function `function(.)
+#'      {foo(.); bar(.)}`.
+#'
+#'      Curly braces are useful when you need to circumvent `` `%>>>%` ``’s
+#'      usual interpretation of function calls. For example, in a composition
+#'      ```
+#'        ... %>>>% {foo(x, y(.))} %>>>% ...
+#'      ```
+#'      the ‘`{foo(x, y(.))}`’ is interpreted as the function `function(.)
+#'      foo(x, y(.))`—there is no point as first argument to `foo`.
+#'
+#'   \subsection{Exceptions to the Interpretation of Calls as Functions}{
+#'   As a matter of convenience, some exceptions are made to the above
+#'   interpretation of calls as functions:
+#'
+#'   - **Parenthesis** ([`(`][base::Paren]) applies grouping. (In R, `` `(` ``
+#'     is indeed a function.) In particular, expressions within parentheses are
+#'     literally interpreted.
+#'
+#'   - **Colon** ([`:`][base::Colon]) applies _naming_, according to the syntax
+#'     ‘`<name>: <function>`’, where ‘`<function>`’ is interpreted according
+#'     to the semantics of `` `%>>>%` ``. For example, in
+#'     ```
+#'       ... %>>>% aName: foo %>>>% ...
+#'     ```
+#'     the function `foo` is named `"aName"`.
+#'
+#'   - **[fn()]**, **[namespace operators][base::ns-dblcolon]** (`` `::`  ``,
+#'     `` `:::` ``) and **[extractors][base::Extract]** (`` `$` ``, `` `[[` ``,
+#'     `` `[` ``) are literally interpreted. This allows for list extractors to
+#'     be applied to composite functions appearing in a `` `%>>>%` `` call (see
+#'     ‘Operate on Composite Functions as List-Like Objects’). For example, the
+#'     compositions
+#'     ```
+#'       paste %>>>% tolower
+#'
+#'       paste %>>>% base::tolower
+#'
+#'       (paste %>>>% toupper)[[1]] %>>>% tolower
+#'     ```
+#'     are equivalent functions.
 #'   }
 #'
-#' @section Operate on a Composite Function as If It Were a List:
+#' @section Quasiquotation:
+#'   The `` `%>>>%` `` operator supports Tidyverse
+#'   [unquoting][rlang::quasiquotation] (via `!!`). Use it to:
+#'
+#'   - **Enforce immutability** — For example, by unquoting `res` in
+#'     ```
+#'       res <- "result"
+#'       get_result <- identity %>>>% lapply(`[[`, !!res)
+#'     ```
+#'     you ensure that the function `get_result()` always extracts the component
+#'     named `"result"`, even if the binding `res` changes its value or is
+#'     removed altogether.
+#'
+#'   - **Interpret the point (`.`) in the lexical scope** — Even though
+#'     `` `%>>>%` `` interprets ‘`.`’ as a function argument, you can still
+#'     reference an object of that name via unquoting. For example,
+#'     ```
+#'       . <- "point"
+#'       is_point <- identity %>>>% {. == !!.}
+#'     ```
+#'     determines a function that checks for equality with the string `"point"`.
+#'
+#'   - **Name composite functions, programmatically** — For example, unquoting
+#'     `nm` in
+#'     ```
+#'       nm <- "aName"
+#'       ... %>>>% !!nm: foo %>>>% ...
+#'     ```
+#'     names the ‘`foo`’-component of the resulting composite function
+#'     `"aName"`.
+#'
+#'   - **Accelerate functions by fixing constant dependencies** — For example,
+#'     presuming the value of the call `f()` is _constant_ and that `g` is a
+#'     _pure_ function (meaning that its return value depends only on its
+#'     input), both
+#'     ```
+#'       ... %>>>% g(f()) %>>>% ...
+#'
+#'       ... %>>>% g(!!f()) %>>>% ...
+#'     ```
+#'     would be functions yielding the same values. But the first would compute
+#'     `f()` anew with each call, whereas the second would simply depend on a
+#'     fixed, pre-computed value of `f()`.
+#'
+#' @section Operate on Composite Functions as List-Like Objects:
 #'   You can think of a composite function as embodying the (possibly nested)
 #'   structure of its list of constituent functions. In fact, you can apply
 #'   familiar index and assignment operations to a composite function, as if it
@@ -131,80 +196,107 @@
 #'   composite functions as _structured computations_.
 #'
 #'   \subsection{Indexing}{
-#'     For instance, the ‘`sum`’ in the following composite function
-#'     \preformatted{%
-#'   f <- abs \%>>>\% out: (log \%>>>\% agg: sum)}
-#'     can be [extracted][base::Extract] in the usual ways:
-#'     \preformatted{%
-#'   f[[2]][[2]], f[[c(2, 2)]],
-#'   f$out$agg, f[["out"]][["agg"]], f[["out"]]$agg,
-#'   f$out[[2]], f[[list("out", 2)]], ...}
-#'     The last form of indexing with a mixed list is handy when you need to
-#'     create an index programmatically.
-#'     \cr\cr
-#'     Additionally, you can excise sub-composite functions with
-#'     [`[`][base::Extract], [head()], [tail()]. For example:
-#'     \itemize{
-#'       \item Both `f[1]` and `head(f, 1)` get the ‘`abs`’ as a composite
-#'         function, namely `compose(abs)`
-#'       \item `f[2:1]` reverses the order of the top-level functions to yield
-#'         \preformatted{%
-#'   out: (log \%>>>\% agg: sum) \%>>>\% abs}
-#'       \item `f$out[c(FALSE, TRUE)]` gets the ‘`sum`’ as a (named) composite
-#'         function
-#'     }
+#'   For instance, the ‘`sum`’ in the following composite function
+#'   ```
+#'     f <- abs %>>>% out: (log %>>>% agg: sum)
+#'   ```
+#'   can be [extracted][base::Extract] in the usual ways:
+#'   ```
+#'     f[[2]][[2]]
+#'     f[[c(2, 2)]]
+#'
+#'     f$out$agg
+#'     f[["out"]][["agg"]]
+#'     f[["out"]]$agg
+#'
+#'     f$out[[2]]
+#'     f[[list("out", 2)]]
+#'   ```
+#'   The last form of indexing with a mixed list is handy when you need to
+#'   create an index programmatically.
+#'
+#'   Additionally, you can excise sub-composite functions with
+#'   [`[`][base::Extract], [head()], [tail()]. For example:
+#'
+#'   * Both `f[1]` and `head(f, 1)` get the ‘`abs`’ as a composite function,
+#'     namely `compose(abs)`
+#'
+#'   * `f[2:1]` reverses the order of the top-level functions to yield
+#'     ```
+#'       out: (log %>>>% agg: sum) %>>>% abs
+#'     ```
+#'
+#'   * `f$out[c(FALSE, TRUE)]` gets the ‘`sum`’ as a (named) composite function
 #'   }
+#'
 #'   \subsection{Subset Assignment}{
-#'     Similarily, subset assignment works as it does for lists. For instance,
-#'     you can replace the ‘`sum`’ with the identity function:
-#'     \preformatted{%
-#'   f[[2]][[2]] <- identity
-#'   f$out$agg <- identity
-#'   f[["out"]][["agg"]] <- identity
-#'   f$out[[2]] <- identity
-#'   f[[list("out", 2)]] <- identity}
-#'     Multiple constituent functions can be reassigned using
-#'     [`[<-`][base::Extract]. For example
-#'     \preformatted{%
-#'   f[2] <- list(log)
-#'   f["out"] <- list(log)
-#'   f[c(FALSE, TRUE)] <- list(log)}
-#'     all replace the second constituent function with `log`, so that `f`
-#'     becomes `abs %>>>% log`.
-#'   }
-#'   \subsection{Other Methods}{
-#'     The generic methods [unlist()], [length()], [names()] also apply to
-#'     composite functions. In conjunction with `compose()`, you can use
-#'     `unlist()` to “flatten” compositions. For example
-#'     \preformatted{%
-#'   compose(unlist(f, use.names = FALSE))}
-#'     gives a function that is identical to
-#'     \preformatted{%
-#'   abs \%>>>\% log \%>>>\% sum}
+#'   Similarily, subset assignment works as it does for lists. For instance, you
+#'   can replace the ‘`sum`’ with the identity function:
+#'   ```
+#'     f[[2]][[2]] <- identity
+#'
+#'     f$out$agg <- identity
+#'     f[["out"]][["agg"]] <- identity
+#'
+#'     f$out[[2]] <- identity
+#'     f[[list("out", 2)]] <- identity
+#'   ```
+#'   Multiple constituent functions can be reassigned using
+#'   [`[<-`][base::Extract]. For example
+#'   ```
+#'     f[2] <- list(log)
+#'
+#'     f["out"] <- list(log)
+#'
+#'     f[c(FALSE, TRUE)] <- list(log)
+#'   ```
+#'   all replace the second constituent function with `log`, so that `f` becomes
+#'   `abs %>>>% log`.
 #'   }
 #'
-#' @section Composite Functions Are Unsimplified, yet Flattened When Called:
-#'   `compose()` and `` `%>>>%` `` are **associative**, semantically and
-#'   operationally. Thus, for instance,
-#'   \preformatted{%
-#'   compose(f, g, h), f \%>>>\% g \%>>>\% h
-#'   compose(f, compose(g, h)), f \%>>>\% (g \%>>>\% h)
-#'   compose(compose(f, g), h), (f \%>>>\% g) \%>>>\% h}
-#'   are implemented as the _same function_—lists of functions are automatically
-#'   “flattened out” when composed. In practical terms, this means the speed of
-#'   a composite function made by `compose()` or `` `%>>>%` ``, regardless of
-#'   its nested depth, is on par with a manually constructed _serial_
-#'   composition.
+#'   \subsection{Other List Methods}{
+#'   The generic methods [unlist()], [length()], [names()] also apply to
+#'   composite functions. In conjunction with `compose()`, you can use
+#'   `unlist()` to “flatten” compositions. For example
+#'   ```
+#'     compose(unlist(f, use.names = FALSE))
+#'   ```
+#'   gives a function that is identical to
+#'   ```
+#'     abs %>>>% log %>>>% sum
+#'   ```
+#'   }
 #'
-#'   Nonetheless, the original nested structure of constituent functions is
+#' @section Composite Functions Balance Speed and Complexity:
+#'   The speed of a composite function made by `compose()` or `` `%>>>%`
+#'   ``—regardless of its nested depth—is on par with a manually constructed
+#'   _serial_ composition. This is because `compose()` and `` `%>>>%` `` are
+#'   **associative**, semantically and operationally. For instance, triple
+#'   compositions,
+#'   ```
+#'     compose(f, g, h)
+#'     f %>>>% g %>>>% h
+#'
+#'     compose(f, compose(g, h))
+#'     f %>>>% (g %>>>% h)
+#'
+#'     compose(compose(f, g), h)
+#'     (f %>>>% g) %>>>% h
+#'   ```
+#'   are all implemented as the _same function_—lists of functions are
+#'   automatically “flattened” when composed.
+#'
+#'   Nevertheless, the original nested structure of constituent functions is
 #'   faithfully recovered by [as.list()]. In particular, `as.list()` and
 #'   `compose()` are **mutually invertible**: `as.list(compose(fs))` is the same
-#'   as `fs`, when `fs` is a (nested) list of functions. (Though the names of
-#'   `as.list()` are always strings, possibly empty.)
+#'   as `fs`, when `fs` is a (nested) list of functions. (But note that the
+#'   names of the list of composite functions is always a character vector; it
+#'   is never `NULL`.)
 #'
 #' @seealso [constant()]; combined with `` `%>>>%` ``, this provides a lazy,
 #'   structured alternative to the
-#'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``.
+#'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``
+#'   operator.
 #'
 #' @examples
 #' # Functions are applied in the order in which they are listed
@@ -252,7 +344,7 @@
 #'   as.list(compose(fs)), fs,
 #' ))
 #'
-#' # `%>>>%` supports names, magrittr `%>%` semantics, quasiquotation
+#' # `%>>>%` supports names, magrittr `%>%` semantics, and quasiquotation
 #' sep <- ""
 #' scramble <- shuffle: sample %>>>% paste(collapse = !!sep)
 #' nonsense <- scramble(letters)
@@ -272,11 +364,13 @@ compose <- function(...) {
   cmp
 }
 
-#' @param fst,snd Functions. These may be optionally named using `:`, e.g.,
-#'   `f %>>>% nm: g` names the `g`-component.
+#' @param fst,snd Functions. These may be optionally named using a colon (`:`),
+#'   e.g., `f %>>>% nm: g` names the `g`-component `"nm"` (see ‘Exceptions to
+#'   the Interpretation of Calls as Functions’).
 #'   [Quasiquotation][rlang::quasiquotation] and the
 #'   [\pkg{magrittr}](https://cran.r-project.org/package=magrittr) `` `%>%` ``
-#'   semantics are supported (see ‘Semantics of `` `%>>>%` ``’ and ‘Examples’).
+#'   semantics are supported (see ‘Semantics of the Composition Operator’,
+#'   ‘Quasiquotation’ and ‘Examples’).
 #'
 #' @rdname compose
 #' @export
@@ -420,11 +514,21 @@ fuse <- function(fs) {
 
 reduce_calls <- function(n, fmls) {
   nms <- as_protected_name(seq_len(n))
-  args <- lapply(names(fmls), as.name)
+  args <- as_called(fmls)
   expr <- as.call(c(as.name(nms[[1L]]), args))
   for (nm in nms[-1L])
     expr <- call(nm, expr)
   list(expr = expr, nms = nms)
+}
+
+as_called <- function(fmls) {
+  nms <- names(fmls)
+  i <- which(nms == "...")
+  if (is_empty(i))
+    return(lapply(nms, as.name))
+  sig <- eponymous(nms)
+  names(sig)[seq_len(i)] <- ""
+  sig
 }
 
 get_tree <- function(fs, env) {
@@ -576,7 +680,7 @@ print.CompositeFunction <- function(x, ...) {
     pad <- rep("\ \ ", length(out))
     cat("\n", nms[[i]], "\n", paste0(pad, out, "\n"), sep = "")
   }
-  cat("\nRecover the list of functions with 'as.list()'.")
+  cat("\nRecover the list of functions with 'as.list()'.\n")
   invisible(x)
 }
 

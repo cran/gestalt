@@ -1,6 +1,6 @@
 Package: gestalt
 Title: Tools for Making and Combining Functions
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: person("Eugene", "Ha", , "eha@posteo.de", c("aut", "cre"))
 Description: Provides a suite of function-building tools centered around a
   (forward) composition operator, %>>>%, which extends the semantics of the
@@ -23,8 +23,8 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 ByteCompile: true
 NeedsCompilation: no
-Packaged: 2018-05-30 21:05:29 UTC; eha
+Packaged: 2018-07-09 12:56:17 UTC; eha
 Author: Eugene Ha [aut, cre]
 Maintainer: Eugene Ha <eha@posteo.de>
 Repository: CRAN
-Date/Publication: 2018-05-31 20:38:25 UTC
+Date/Publication: 2018-07-09 13:30:02 UTC

@@ -83,17 +83,19 @@ literal_tidy <- function(...) {
 #' signature. Use it in place of the usual [function()] invocation whenever you
 #' want to:
 #'
-#' - **Be concise**: The function declarations
+#' - **Be concise** — The function declarations
 #'   ```
 #'     fn(x, y = 1 ~ x + y)
+#'
 #'     function(x, y = 1) x + y
 #'   ```
 #'   are equivalent.
 #'
-#' - **Enforce immutability**: By enabling tidyverse
+#' - **Enforce immutability** — By enabling Tidyverse
 #'   [quasiquotation][rlang::quasiquotation], `fn()` allows you to “burn in”
-#'   values at the point of function creation, to guard against changes in
-#'   lexical scope (see ‘Pure Functions via Quasiquotation’).
+#'   values at the point of function creation. This guards against changes in a
+#'   function’s enclosing environment. (See ‘Use Unquoting to Make Robust
+#'   Functions’.)
 #'
 #' @param ... Function declaration, which supports
 #'   [quasiquotation][rlang::quasiquotation].
@@ -114,71 +116,81 @@ literal_tidy <- function(...) {
 #'   ```
 #'   (Note in the second form that the body is a one-sided formula. This
 #'   distinction is relevant for argument [splicing][rlang::quasiquotation], see
-#'   below.)
+#'   ‘Quasiquotation’.)
 #'
-#'   - To the left of `~`, you write a conventional function-argument
+#'   * To the left of `~`, you write a conventional function-argument
 #'     declaration, just as in `function(<arguments>)`: each of `arg1`, `arg2`,
 #'     \dots, `argN` is either a bare argument (e.g., `x` or `...`) or an
 #'     argument with default value (e.g., `x = 1`).
 #'
-#'   - To the right of `~`, you write the function body,
-#'     i.e., an expression of the arguments.
+#'   * To the right of `~`, you write the function body, i.e., an expression of
+#'     the arguments.
 #'
-#'   \subsection{Quasiquotation}{
-#'     All parts of a function declaration support tidyverse
-#'     [quasiquotation][rlang::quasiquotation]:
-#'     \itemize{
-#'       \item To unquote values (of arguments or parts of the body), use `!!`:
-#'         \preformatted{%
-#'   z <- 0
-#'   fn(x, y = !!z ~ x + y)
-#'   fn(x ~ x > !!z)}
-#'       \item To unquote argument names (with default value), use `:=`
-#'         (definition operator):
-#'         \preformatted{%
-#'   arg <- "y"
-#'   fn(x, !!arg := 0 ~ x + !!as.name(arg))}
-#'       \item To splice in a (formal) list of arguments, use `!!!`:
-#'         \preformatted{%
-#'   # NB: Body is a one-sided formula
-#'   fn(!!!alist(x, y = 0), ~ x + y)}
-#'         Splicing allows you to treat a complete function declaration as a
-#'         unit:
-#'         \preformatted{%
-#'   soma <- alist(x, y = 0, ~ x + y)
-#'   fn(!!!soma)}
-#'       \item To write literal unquoting operators, use `QUQ()`, `QUQS()`,
-#'         which read as “quoted unquoting,” “quoted unquote-splicing”, resp.
-#'         (cf. `fn_()`):
-#'         \preformatted{%
-#'   library(dplyr)
+#' @section Quasiquotation:
+#'   All parts of a function declaration support Tidyverse
+#'   [quasiquotation][rlang::quasiquotation]:
 #'
-#'   my_summarise <- fn(df, ... ~ {
-#'     group_by <- quos(...)
-#'     df \%>\%
-#'       group_by(QUQS(group_by)) \%>\%
-#'       summarise(a = mean(a))
-#'   })}
-#'         (Source:
-#'         [Programming with dplyr](http://dplyr.tidyverse.org/articles/programming.html))
-#'     }
-#'   }
+#'   * To unquote values (of arguments or parts of the body), use `!!`:
+#'     ```
+#'       z <- 0
+#'       fn(x, y = !!z ~ x + y)
+#'       fn(x ~ x > !!z)
+#'     ```
 #'
-#' @section Pure Functions via Quasiquotation: Functions in R are generally
+#'   * To unquote argument names (with default value), use `:=` (definition
+#'     operator):
+#'     ```
+#'       arg <- "y"
+#'       fn(x, !!arg := 0 ~ x + !!as.name(arg))
+#'     ```
+#'
+#'   * To splice in a (formal) list of arguments, use `!!!`:
+#'     ```
+#'       # NB: Body is a one-sided formula
+#'       fn(!!!alist(x, y = 0), ~ x + y)
+#'     ```
+#'     Splicing allows you to treat a complete function declaration as a unit:
+#'     ```
+#'       soma <- alist(x, y = 0, ~ x + y)
+#'       fn(!!!soma)
+#'     ```
+#'
+#'   * To write literal unquoting operators, use `QUQ()`, `QUQS()`, which read
+#'     as “quoted unquoting,” “quoted unquote-splicing”, resp. (cf. `fn_()`):
+#'     ```
+#'       library(dplyr)
+#'
+#'       my_summarise <- fn(df, ... ~ {
+#'         group_by <- quos(...)
+#'         df %>%
+#'           group_by(QUQS(group_by)) %>%
+#'           summarise(a = mean(a))
+#'       })
+#'     ```
+#'     (Source: [Programming with
+#'     dplyr](http://dplyr.tidyverse.org/articles/programming.html))
+#'
+#' @section Use Unquoting to Make Robust Functions:
+#'   Functions in R are generally
 #'   [impure](https://en.wikipedia.org/wiki/Pure_function), i.e., the return
 #'   value of a function will _not_ in general be determined by the value of its
-#'   inputs alone. This is because a function may depend on mutable objects in
-#'   its
-#'   [lexical scope](http://adv-r.hadley.nz/functions.html#lexical-scoping).
-#'   Normally this isn’t an issue. But if you are working interactively and
-#'   sourcing files into the global environment, say, or using a notebook
-#'   interface
-#'   (like [Jupyter](https://jupyter.org) or
-#'   [R Notebook](http://rmarkdown.rstudio.com/r_notebooks.html)),
-#'   it can be tricky to ensure that you haven’t unwittingly mutated an object
-#'   that an earlier function depends upon.
+#'   inputs alone. This is because, by design, a function may depend on objects
+#'   in its
+#'   [lexical scope](http://adv-r.hadley.nz/functions.html#lexical-scoping), and
+#'   these objects may mutate between function calls. Normally this isn’t a
+#'   hazard.
 #'
-#'   **Example** — Consider the following function:
+#'   However, if you are working interactively and sourcing files into the
+#'   global environment, or using a notebook interface like
+#'   [Jupyter](https://jupyter.org) or
+#'   [R Notebook](http://rmarkdown.rstudio.com/r_notebooks.html), it can be
+#'   tricky to ensure that you haven’t unwittingly mutated an object that an
+#'   earlier function depends upon.
+#'
+#'   You can use unquoting to guard against such mutations.
+#'
+#'   \subsection{Example}{
+#'   Consider the following function:
 #'   ```
 #'     a <- 1
 #'     foo <- function(x) x + a
@@ -188,18 +200,16 @@ literal_tidy <- function(...) {
 #'   of `foo(1)`:
 #'   ```
 #'     foo(1)  #> [1] 2
+#'
 #'     a <- 0
+#'
 #'     foo(1)  #> [1] 1
 #'   ```
 #'   In other words, `foo()` is impure because the value of `foo(x)` depends not
 #'   only on the value of `x` but also on the _externally mutable_ value of `a`.
 #'
-#'   `fn()` enables you to write _pure_ functions by using
-#'   [quasiquotation](http://rlang.tidyverse.org/reference/quasiquotation.html)
-#'   to eliminate such indeterminacy.
-#'
-#'   **Example** — With `fn()`, you can unquote `a` to “burn in” its value at
-#'   the point of creation:
+#'   With `fn()`, you can unquote `a` to “burn in” its value at the point of
+#'   creation:
 #'   ```
 #'     a <- 1
 #'     foo <- fn(x ~ x + !!a)
@@ -208,9 +218,12 @@ literal_tidy <- function(...) {
 #'   scope:
 #'   ```
 #'     foo(1)  #> [1] 2
+#'
 #'     a <- 0
+#'
 #'     foo(1)  #> [1] 2
 #'   ```
+#'   }
 #'
 #' @examples
 #' fn(x ~ x + 1)
@@ -260,7 +273,7 @@ literal <- function(...) {
 #'  `fn_()` is a variant of `fn()` that does _not_ comprehend quasiquotation. It
 #'  is useful when you want unquoting (`` `!!` ``) or splicing (`` `!!!` ``)
 #'  operators in the function body to be literally interpreted, rather than
-#'  immediately invoked. (See ‘Function Declarations’ for a complementary way to
+#'  immediately invoked. (See ‘Quasiquotation’ for a complementary way to
 #'  literally interpret unquoting and splicing operators in `fn()`.)
 #'
 #' @examples
