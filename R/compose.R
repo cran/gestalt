@@ -80,7 +80,8 @@
 #'          ... %>>>% foo(x, y = .) %>>>% ...
 #'        ```
 #'        the ‘`foo(x, .)`’, resp. ‘`foo(x, y = .)`’, is interpreted as the
-#'        function `function(.) foo(x, .)`, resp. `function(.) foo(x, y = .)`.
+#'        function `function(..., . = ..1) foo(x, .)`, resp.
+#'        `function(..., . = ..1) foo(x, y = .)`.
 #'
 #'      * Otherwise, the call is regarded as implicitly having the point as its
 #'        first argument before being interpreted as the body of the function.
@@ -91,7 +92,8 @@
 #'          ... %>>>% foo(x, y(.)) %>>>% ...
 #'        ```
 #'        the ‘`foo(x)`’, resp. ‘`foo(x, y(.))`’, is interpreted as the function
-#'        `function(.) foo(., x)`, resp. `function(.) foo(., x, y(.))`.
+#'        `function(..., . = ..1) foo(., x)`, resp.
+#'        `function(..., . = ..1) foo(., x, y(.))`.
 #'
 #'   3. **Expressions `{...}` are interpreted as a function of a point (`.`)** —
 #'      For example, in a composition
@@ -101,16 +103,17 @@
 #'          bar(.)
 #'        } %>>>% ...
 #'      ```
-#'      the ‘`{foo(.); bar(.)}`’ is interpreted as the function `function(.)
-#'      {foo(.); bar(.)}`.
+#'      the ‘`{foo(.); bar(.)}`’ is interpreted as the function
+#'      `function(..., . = ..1) {foo(.); bar(.)}`.
 #'
 #'      Curly braces are useful when you need to circumvent `` `%>>>%` ``’s
 #'      usual interpretation of function calls. For example, in a composition
 #'      ```
 #'        ... %>>>% {foo(x, y(.))} %>>>% ...
 #'      ```
-#'      the ‘`{foo(x, y(.))}`’ is interpreted as the function `function(.)
-#'      foo(x, y(.))`—there is no point as first argument to `foo`.
+#'      the ‘`{foo(x, y(.))}`’ is interpreted as the function
+#'      `function(..., . = ..1) foo(x, y(.))`—there is no point as first
+#'      argument to `foo`.
 #'
 #'   \subsection{Exceptions to the Interpretation of Calls as Functions}{
 #'   As a matter of convenience, some exceptions are made to the above
@@ -419,7 +422,8 @@ is_literal <- function(expr) {
   !is.call(expr)        ||
     is_op_compose(expr) ||
     is_subsetter(expr)  ||
-    is_fn_lambda(expr)  ||
+    is_fn(expr)         ||
+    is_partial(expr)    ||
     is_op_namespace(expr)
 }
 
@@ -432,7 +436,8 @@ is_dollar  <- check_head("$")
 is_sqr_sqr <- check_head("[[")
 is_sqr     <- check_head("[")
 
-is_fn_lambda <- check_head("fn")
+is_fn      <- check_head("fn")
+is_partial <- check_head("partial")
 
 is_op_namespace <- function(expr) {
   is_op_public(expr) || is_op_private(expr)
@@ -456,9 +461,13 @@ lambda_named <- function(expr, env) {
 
 is_lambda <- check_head("{")
 
-lambda <- function(body, env) {
-  new_fn(alist(. = ), body, env)
-}
+lambda <- local({
+  args <- pairlist(... = quote(expr = ), . = quote(..1))
+
+  function(body, env) {
+    new_fn(args, body, env)
+  }
+})
 
 lambda_partial <- local({
   point <- as.name(".")
@@ -476,7 +485,7 @@ lambda_partial <- local({
     if (is_void(call))
       return(caller)
     args <- as.list(call)[-1L]
-    if (all(args != point))
+    if (all(args != point, na.rm = TRUE))
       call <- as.call(c(call[[1L]], point, args))
     verify_conformance(call, to = caller)
     lambda(call, env)
@@ -677,8 +686,7 @@ print.CompositeFunction <- function(x, ...) {
   pipeline <- unlist(fs)
   for (i in seq_along(pipeline)) {
     out <- trim_capture(pipeline[[i]])
-    pad <- rep("\ \ ", length(out))
-    cat("\n", nms[[i]], "\n", paste0(pad, out, "\n"), sep = "")
+    cat("\n", nms[[i]], "\n", paste0("\ \ ", out, "\n"), sep = "")
   }
   cat("\nRecover the list of functions with 'as.list()'.\n")
   invisible(x)
