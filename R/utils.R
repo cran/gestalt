@@ -1,6 +1,6 @@
 # Aliases
-list_tidy <- list2
-names_chr <- names2
+list_tidy <- function(...) list2(...)
+names_chr <- function(x) names2(x)
 `%named%` <- function(x, nm) `names<-`(x, nm)
 
 `%??%` <- function(x, default) {
@@ -78,24 +78,38 @@ getter <- function(nm) {
   }
 }
 
-assign_getter <- function(nm) {
-  property <- mangle(nm)
-  getter <- function(x) {
-    attr(x, property, exact = TRUE)
+assign_getter <- local({
+  assign_getter_ <- function(nm, env = parent.frame()) {
+    property <- mangle(nm)
+    getter <- function(x) {
+      attr(x, property, exact = TRUE)
+    }
+    assign(nm, getter, envir = env)
+    invisible(getter)
   }
-  assign(nm, getter, envir = parent.frame())
-  invisible(getter)
-}
 
-assign_setter <- function(nm) {
-  property <- mangle(nm)
-  setter <- function(x, value) {
-    attr(x, property) <- value
-    invisible(x)
+  function(..., env = parent.frame()) {
+    for (nm in c(...))
+      assign_getter_(nm, env)
   }
-  assign(paste0(nm, "<-"), setter, envir = parent.frame())
-  invisible(setter)
-}
+})
+
+assign_setter <- local({
+  assign_setter_ <- function(nm, env = parent.frame()) {
+    property <- mangle(nm)
+    setter <- function(x, value) {
+      attr(x, property) <- value
+      invisible(x)
+    }
+    assign(paste0(nm, "<-"), setter, envir = env)
+    invisible(setter)
+  }
+
+  function(..., env = parent.frame()) {
+    for (nm in c(...))
+      assign_setter_(nm, env)
+  }
+})
 
 mangle <- function(nm) {
   paste0(".__GESTALT_", toupper(nm), "__.")
