@@ -133,7 +133,7 @@ to the semantics of \code{`\%>>>\%`}. For example, in\preformatted{  ... \%>>>\%
 }
 
 the function \code{foo} is named \code{"aName"}.
-\item \strong{\code{\link[=fn]{fn()}}}, \strong{\link[base:ns-dblcolon]{namespace operators}} (\code{`::`},
+\item \strong{\code{\link[=fn]{fn()}}}, \strong{\link[base:ns-dblcolon]{namespace operators}} (\code{`::` },
 \code{`:::`}) and \strong{\link[base:Extract]{extractors}} (\code{`$`}, \code{`[[`},
 \code{`[`}) are literally interpreted. This allows for list extractors to
 be applied to composite functions appearing in a \code{`\%>>>\%`} call (see
