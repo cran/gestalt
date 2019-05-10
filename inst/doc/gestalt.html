@@ -303,7 +303,7 @@ residuals(&quot;cyl&quot;)[[&quot;6&quot;]]
 
 set.seed(1)
 scramble(letters, 5)
-#&gt; [1] &quot;GJNUE&quot;
+#&gt; [1] &quot;YDGAB&quot;
 </code></pre>
 
 <p>Here you see the final result of the composition. But because <code>scramble</code> is a
@@ -318,9 +318,9 @@ add printing at each step:</p>
 
 <pre><code class="r">set.seed(1)
 stepwise(scramble)(letters, 5)
-#&gt; [1] &quot;g&quot; &quot;j&quot; &quot;n&quot; &quot;u&quot; &quot;e&quot;
-#&gt; [1] &quot;G&quot; &quot;J&quot; &quot;N&quot; &quot;U&quot; &quot;E&quot;
-#&gt; [1] &quot;GJNUE&quot;
+#&gt; [1] &quot;y&quot; &quot;d&quot; &quot;g&quot; &quot;a&quot; &quot;b&quot;
+#&gt; [1] &quot;Y&quot; &quot;D&quot; &quot;G&quot; &quot;A&quot; &quot;B&quot;
+#&gt; [1] &quot;YDGAB&quot;
 </code></pre>
 
 <h2>The <a href="https://youtu.be/-6BsiVyC1kM">value of values</a> as functions</h2>
@@ -418,7 +418,7 @@ Like <code>fn</code>, it also supports
 
 set.seed(2)
 draw(letters)
-#&gt; [1] &quot;e&quot; &quot;s&quot; &quot;o&quot; &quot;e&quot; &quot;y&quot;
+#&gt; [1] &quot;u&quot; &quot;o&quot; &quot;f&quot; &quot;f&quot; &quot;h&quot;
 </code></pre>
 
 <p>Additionally, <code>partial</code> is:</p>
