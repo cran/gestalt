@@ -11,7 +11,7 @@ fn_(..., ..env = parent.frame())
 }
 \arguments{
 \item{...}{Function declaration, which supports
-\link[rlang:quasiquotation]{quasiquotation}.}
+\link[rlang:topic-inject]{quasiquotation}.}
 
 \item{..env}{Environment in which to create the function (i.e., the
 function's \link[base:environment]{enclosing environment}).}
@@ -31,7 +31,7 @@ want to:
 
 are equivalent.
 \item \strong{Enforce immutability}: By enabling Tidyverse
-\link[rlang:quasiquotation]{quasiquotation}, \code{fn()} allows you to \dQuote{burn
+\link[rlang:topic-inject]{quasiquotation}, \code{fn()} allows you to \dQuote{burn
 in} values at the point of function creation. This guards against changes
 in a function's enclosing environment. (See \sQuote{Use Unquoting to Make
 Robust Functions}.)
@@ -53,11 +53,11 @@ or\preformatted{  arg1, arg2, ..., argN, ~body
 }
 
 (Note in the second form that the body is a one-sided formula. This
-distinction is relevant for argument \link[rlang:quasiquotation]{splicing}, see
+distinction is relevant for argument \link[rlang:topic-inject]{splicing}, see
 \sQuote{Quasiquotation}.)
 \itemize{
 \item To the left of \code{~}, you write a conventional function-argument
-declaration, just as in \code{function(<arguments>)}: each of \code{arg1}, \code{arg2},
+declaration, just as in \verb{function(<arguments>)}: each of \code{arg1}, \code{arg2},
 \dots, \code{argN} is either a bare argument (e.g., \code{x} or \code{...}) or an
 argument with default value (e.g., \code{x = 1}).
 \item To the right of \code{~}, you write the function body, i.e., an expression of
@@ -68,17 +68,17 @@ the arguments.
 \section{Quasiquotation}{
 
 All parts of a function declaration support Tidyverse
-\link[rlang:quasiquotation]{quasiquotation}:
+\link[rlang:topic-inject]{quasiquotation}:
 \itemize{
-\item To unquote values (of arguments or parts of the body), use \code{!!}:\preformatted{  z <- 0
+\item To unquote values (of arguments or parts of the body), use \verb{!!}:\preformatted{  z <- 0
   fn(x, y = !!z ~ x + y)
   fn(x ~ x > !!z)
 }
-\item To unquote argument names (with default value), use \code{:=} (definition
+\item To unquote argument names (with default value), use \verb{:=} (definition
 operator):\preformatted{  arg <- "y"
   fn(x, !!arg := 0 ~ x + !!as.name(arg))
 }
-\item To splice in a (formal) list of arguments, use \code{!!!}:\preformatted{  # NB: Body is a one-sided formula
+\item To splice in a (formal) list of arguments, use \verb{!!!}:\preformatted{  # NB: Body is a one-sided formula
   fn(!!!alist(x, y = 0), ~ x + y)
 }
 
@@ -89,15 +89,15 @@ Splicing allows you to treat a complete function declaration as a unit:\preforma
 as \dQuote{quoted unquoting,} \dQuote{quoted unquote-splicing,} resp. (cf.
 \code{fn_()}):\preformatted{  library(dplyr)
 
-  my_summarise <- fn(df, ... ~ {
-    group_by <- quos(...)
+  my_summarise <- fn(df, ... ~ \{
+    groups <- quos(...)
     df \%>\%
-      group_by(QUQS(group_by)) \%>\%
+      group_by(QUQS(groups)) \%>\%
       summarise(a = mean(a))
-  })
+  \})
 }
 
-(Source: \href{http://dplyr.tidyverse.org/articles/programming.html}{Programming with dplyr})
+(Source: \href{https://dplyr.tidyverse.org/articles/programming.html}{Programming with dplyr})
 }
 }
 
@@ -108,14 +108,14 @@ Functions in R are generally
 value of a function will \emph{not} in general be determined by the value of its
 inputs alone. This is because, by design, a function may depend on objects
 in its
-\href{http://adv-r.hadley.nz/functions.html#lexical-scoping}{lexical scope}, and
+\href{https://adv-r.hadley.nz/functions.html#lexical-scoping}{lexical scope}, and
 these objects may mutate between function calls. Normally this isn't a
 hazard.
 
 However, if you are working interactively and sourcing files into the
 global environment, or using a notebook interface like
 \href{https://jupyter.org}{Jupyter} or
-\href{http://rmarkdown.rstudio.com/r_notebooks.html}{R Notebook}, it can be
+\href{https://bookdown.org/yihui/rmarkdown/notebook.html}{R Notebook}, it can be
 tricky to ensure that you haven't unwittingly mutated an object that an
 earlier function depends upon.
 
@@ -176,19 +176,17 @@ f <- function(x, y) x + y
 g <- function(y, x, ...) x - y
 frankenstein <- fn(!!!formals(f), ~ !!body(g))
 stopifnot(identical(frankenstein, function(x, y) x - y))
-\donttest{
+
 # mixing unquoting and literal unquoting is possible
-library(dplyr)
-
+# (Assume dplyr is available, which provides group_by() and `\%>\%`.)
 summariser <- quote(mean)
-
 my_summarise <- fn(df, ... ~ {
-  group_by <- quos(...)
+  groups <- quos(...)
   df \%>\%
-    group_by(QUQS(group_by)) \%>\%
-    summarise(a = `!!`(summariser)(a))
+    group_by(QUQS(groups)) \%>\%          # literal unquote-splice
+    summarise(a = `!!`(summariser)(a))  # substitute `mean`
 })
-my_summarise}
+my_summarise
 
 # Use fn_() with fn() as a concise way to force ("pin down") bindings
 # For example, the 'x' is immutable in the function produced by call_upon():
@@ -203,9 +201,8 @@ enforce <- fn_(condition ~
   })
 )
 no_nan <- enforce(!is.nan(x))
-\donttest{
 log_strict <- fn(x ~ no_nan(log(x)))
-log_strict(2)   # [1] 0.6931472
-log_strict(-1)  # Error: !is.nan(x) is not TRUE}
+log_strict(2)        # [1] 0.6931472
+try(log_strict(-1))  # Error: !is.nan(x) is not TRUE
 
 }

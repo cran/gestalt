@@ -59,7 +59,8 @@ make_function <- function(args, body, env) {
   if (is_closure(body)) {
     body <- call("function", formals(body), base::body(body))
   } else {
-    is_expression(body) %because% "Body must be an expression or closure"
+    (is_expression(body) || is_call(body)) %because%
+      "Body must be an expression or closure"
   }
   new_fn(args, body, env)
 }
@@ -163,14 +164,14 @@ literal_tidy <- function(...) {
 #'       library(dplyr)
 #'
 #'       my_summarise <- fn(df, ... ~ {
-#'         group_by <- quos(...)
+#'         groups <- quos(...)
 #'         df %>%
-#'           group_by(QUQS(group_by)) %>%
+#'           group_by(QUQS(groups)) %>%
 #'           summarise(a = mean(a))
 #'       })
 #'     ```
 #'     (Source: [Programming with
-#'     dplyr](http://dplyr.tidyverse.org/articles/programming.html))
+#'     dplyr](https://dplyr.tidyverse.org/articles/programming.html))
 #'
 #' @section Use Unquoting to Make Robust Functions:
 #'   Functions in R are generally
@@ -178,14 +179,14 @@ literal_tidy <- function(...) {
 #'   value of a function will _not_ in general be determined by the value of its
 #'   inputs alone. This is because, by design, a function may depend on objects
 #'   in its
-#'   [lexical scope](http://adv-r.hadley.nz/functions.html#lexical-scoping), and
+#'   [lexical scope](https://adv-r.hadley.nz/functions.html#lexical-scoping), and
 #'   these objects may mutate between function calls. Normally this isn't a
 #'   hazard.
 #'
 #'   However, if you are working interactively and sourcing files into the
 #'   global environment, or using a notebook interface like
 #'   [Jupyter](https://jupyter.org) or
-#'   [R Notebook](http://rmarkdown.rstudio.com/r_notebooks.html), it can be
+#'   [R Notebook](https://bookdown.org/yihui/rmarkdown/notebook.html), it can be
 #'   tricky to ensure that you haven't unwittingly mutated an object that an
 #'   earlier function depends upon.
 #'
@@ -249,19 +250,17 @@ literal_tidy <- function(...) {
 #' g <- function(y, x, ...) x - y
 #' frankenstein <- fn(!!!formals(f), ~ !!body(g))
 #' stopifnot(identical(frankenstein, function(x, y) x - y))
-#' \donttest{
+#'
 #' # mixing unquoting and literal unquoting is possible
-#' library(dplyr)
-#'
+#' # (Assume dplyr is available, which provides group_by() and `%>%`.)
 #' summariser <- quote(mean)
-#'
 #' my_summarise <- fn(df, ... ~ {
-#'   group_by <- quos(...)
+#'   groups <- quos(...)
 #'   df %>%
-#'     group_by(QUQS(group_by)) %>%
-#'     summarise(a = `!!`(summariser)(a))
+#'     group_by(QUQS(groups)) %>%          # literal unquote-splice
+#'     summarise(a = `!!`(summariser)(a))  # substitute `mean`
 #' })
-#' my_summarise}
+#' my_summarise
 #'
 #' @export
 fn <- fn_constructor(literal_tidy, make_function)
@@ -292,10 +291,9 @@ literal <- function(...) {
 #'   })
 #' )
 #' no_nan <- enforce(!is.nan(x))
-#' \donttest{
 #' log_strict <- fn(x ~ no_nan(log(x)))
-#' log_strict(2)   # [1] 0.6931472
-#' log_strict(-1)  # Error: !is.nan(x) is not TRUE}
+#' log_strict(2)        # [1] 0.6931472
+#' try(log_strict(-1))  # Error: !is.nan(x) is not TRUE
 #'
 #' @rdname fn
 #' @export

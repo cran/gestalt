@@ -1,5 +1,11 @@
 # gestalt
 
+## 0.1.9
+
+Gestalt now depends on a stable release of rlang, version 1.0.0 and above.
+(A minor internal fix was made to address a change in the behavior of
+`rlang::is_expression()`.) There are no user-facing changes.
+
 ## 0.1.8
 
   * The environment of a partial function expression in a `%>>>%` chain
