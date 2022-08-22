@@ -65,10 +65,7 @@ halt <- function(msg, ...) {
 getter <- function(nm) {
   force(nm)
   function(x) {
-    env <- environment(x) %||% emptyenv()
-    if (exists(nm, envir = env))
-      return(get(nm, envir = env))
-    NULL
+    get0(nm, envir = environment(x) %||% emptyenv())
   }
 }
 
@@ -79,7 +76,6 @@ assign_getter <- local({
       attr(x, property, exact = TRUE)
     }
     assign(nm, getter, envir = env)
-    invisible(getter)
   }
 
   function(..., env = parent.frame()) {
@@ -96,7 +92,6 @@ assign_setter <- local({
       invisible(x)
     }
     assign(paste0(nm, "<-"), setter, envir = env)
-    invisible(setter)
   }
 
   function(..., env = parent.frame()) {
